@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TestRunner": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\Dasha\\Desktop\\.NET\\TestAutomatization\\WebApp.Tests\\bin\\Debug\\net8.0\\WebApp.Tests.dll"
+    }
+  }
+}
