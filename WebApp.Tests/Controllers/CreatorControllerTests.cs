@@ -11,7 +11,6 @@ using TestUnit.Attributes.ClassAttributes.SetupCleanup;
 using TestUnit.Attributes.MethodAttributes.Fact;
 using TestUnit.Attributes.MethodAttributes.Theory;
 
-
 namespace WebApp.Tests.Controllers
 {
     [TestClass]
