@@ -2,7 +2,7 @@
 {
     public interface IRepository<TEntity> where TEntity : class
     {
-        List<TEntity> GetAll();
+        Task<List<TEntity>> GetAllAsync();
         TEntity GetById(int id);
         TEntity Create(TEntity entity);
         TEntity Update(TEntity entity);

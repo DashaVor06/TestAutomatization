@@ -6,7 +6,7 @@ namespace BusinessLogic.Servicies
     public interface IBaseService<TEntityRequest, TEntityResponse> where TEntityRequest : class
                                                                    where TEntityResponse : class
     {
-        List<TEntityResponse> GetAll();
+        Task<List<TEntityResponse>> GetAllAsync();
         TEntityResponse? GetById(int id);
         TEntityResponse Create(TEntityRequest entity);
         TEntityResponse? Update(TEntityRequest entity);

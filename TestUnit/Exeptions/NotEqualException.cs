@@ -8,10 +8,10 @@ namespace TestUnit.Exeptions
 {
     public class NotEqualException : AssertionException
     {
-        public object Expected { get; }
-        public object Actual { get; }
+        public object? Expected { get; }
+        public object? Actual { get; }
 
-        public NotEqualException(object expected, object actual)
+        public NotEqualException(object? expected, object? actual)
             : base($"Expected not: {expected}, but was: {actual}")
         {
             Expected = expected;

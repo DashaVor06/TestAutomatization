@@ -1,5 +1,5 @@
 ﻿using System.Reflection;
-using TestRunner.Test;
+using TestRunner.Models;
 using TestUnit.Attributes;
 using TestUnit.Exeptions;
 
@@ -8,6 +8,17 @@ namespace TestRunner.TestExecuter
     public class TestExecuter
     {
         private static Dictionary<Type, bool> _classSetupExecuted = new();
+
+        private void ExecuteMethod(object? instance, MethodInfo? method, object[]? parameters, bool isAsync)
+        {
+            var result = method?.Invoke(instance, parameters);
+
+            if (isAsync && result is Task task)
+            {
+                task.GetAwaiter().GetResult();
+            }
+        }
+
         public TestResult ExecuteTest(TestInfo testInfo, bool needClassCleanup)
         {
             var result = new TestResult
@@ -16,10 +27,14 @@ namespace TestRunner.TestExecuter
                 Status = "PASSED"
             };
 
-            object instance = null;
+            object? instance = null;
 
             try
             {
+                if (testInfo.ClassType == null)
+                {
+                    throw new InvalidOperationException($"ClassType is null for test {testInfo.DisplayName}");
+                }
                 instance = Activator.CreateInstance(testInfo.ClassType);
 
                 if (testInfo.ClassSetup != null)
@@ -36,16 +51,16 @@ namespace TestRunner.TestExecuter
 
                     if (needClassSetup)
                     {
-                        testInfo.ClassSetup.Invoke(instance, null);
+                        ExecuteMethod(instance, testInfo.ClassSetup, null, testInfo.IsAsync);
                     }
                 }
 
                 if (testInfo.MethodSetup != null)
                 {
-                    testInfo.MethodSetup.Invoke(instance, null);
+                    ExecuteMethod(instance, testInfo.MethodSetup, null, testInfo.IsAsync);
                 }
 
-                testInfo.Method.Invoke(instance, testInfo.Parameters);
+                ExecuteMethod(instance, testInfo.Method, testInfo.Parameters, testInfo.IsAsync);
             }
             catch (TargetInvocationException ex)
             {
@@ -73,12 +88,12 @@ namespace TestRunner.TestExecuter
             {
                 if (instance != null && testInfo.MethodCleanup != null)
                 {
-                    testInfo.MethodCleanup.Invoke(instance, null);
+                    ExecuteMethod(instance, testInfo.MethodCleanup, null, testInfo.IsAsync);
                 }
 
                 if (needClassCleanup && testInfo.ClassCleanup != null)
                 {
-                    testInfo.ClassCleanup.Invoke(null, null);
+                    ExecuteMethod(null, testInfo.ClassCleanup, null, testInfo.IsAsync);
                 }
             }
 

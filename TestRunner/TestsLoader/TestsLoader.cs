@@ -1,10 +1,10 @@
 ﻿using System.Reflection;
-using TestRunner.Test;
 using TestUnit.Attributes.ClassAttributes;
 using TestUnit.Attributes.ClassAttributes.SetupCleanup;
 using TestUnit.Attributes.MethodAttributes.Fact;
 using TestUnit.Attributes.MethodAttributes.Theory;
 using TestUnit.Attributes;
+using TestRunner.Models;
 
 namespace TestRunner.TestLoader
 {
@@ -16,28 +16,9 @@ namespace TestRunner.TestLoader
                         .ToDictionary(attr => attr.Key, attr => attr.Value);
         }
 
-        private Dictionary<string, string> MergeTraits(
-            Dictionary<string, string> classTraits,
-            Dictionary<string, string> methodTraits)
+        private string GetDisplayName(Dictionary<string, string> traits, MemberInfo member, string defaultName)
         {
-            var result = new Dictionary<string, string>(classTraits);
-
-            foreach (var kvp in methodTraits)
-            {
-                result[kvp.Key] = kvp.Value;
-            }
-
-            return result;
-        }
-
-        private string GetDisplayName(
-            Dictionary<string, string> traits,
-            MethodInfo method)
-        {
-            if (traits.TryGetValue("DisplayName", out var displayName))
-                return displayName;
-
-            return method.Name;
+            return traits.TryGetValue("DisplayName", out var displayName) ? displayName : defaultName;
         }
 
         private string GetPriority(Dictionary<string, string> traits, string defaultValue = "P3")
@@ -47,11 +28,10 @@ namespace TestRunner.TestLoader
 
         private List<TestInfo> SearchFact(
             Type type,
-            MethodInfo classSetup,
-            MethodInfo classCleanup,
-            MethodInfo methodSetup,
-            MethodInfo methodCleanup,
-            Dictionary<string, string> classTraits
+            MethodInfo? classSetup,
+            MethodInfo? classCleanup,
+            MethodInfo? methodSetup,
+            MethodInfo? methodCleanup
         )
         {
             List<TestInfo> tests = new List<TestInfo>();
@@ -59,20 +39,17 @@ namespace TestRunner.TestLoader
             foreach (var method in type.GetMethods())
             {
                 var factAttribute = method.GetCustomAttribute<FactMethodAttribute>();
-                var traitAttributes = method.GetCustomAttributes<TestTraitAttribute>();
-                var methodTraits = GetTraits(method);
-
-                var allTraits = MergeTraits(classTraits, methodTraits);
-
                 if (factAttribute != null)
                 {
+                    var methodTraits = GetTraits(method);
+
                     tests.Add(new TestInfo
                     {
                         ClassType = type,
                         Method = method,
-                        DisplayName = GetDisplayName(allTraits, method),
-                        Priority = GetPriority(allTraits),
-                        Traits = allTraits,
+                        DisplayName = GetDisplayName(methodTraits, method, method.Name),
+                        Priority = GetPriority(methodTraits),
+                        Traits = methodTraits,
                         Parameters = null,
                         ClassSetup = classSetup,
                         ClassCleanup = classCleanup,
@@ -88,12 +65,11 @@ namespace TestRunner.TestLoader
         }
 
         private List<TestInfo> SearchTheory(
-            Type type, 
-            MethodInfo classSetup, 
-            MethodInfo classCleanup,
-            MethodInfo methodSetup,
-            MethodInfo methodCleanup,
-            Dictionary<string, string> classTraits
+            Type type,
+            MethodInfo? classSetup,
+            MethodInfo? classCleanup,
+            MethodInfo? methodSetup,
+            MethodInfo? methodCleanup
         )
         {
             List<TestInfo> tests = new List<TestInfo>();
@@ -106,8 +82,6 @@ namespace TestRunner.TestLoader
                     var inlineDataAttrs = method.GetCustomAttributes<TheoryInlineDataAttribute>().ToList();
                     var methodTraits = GetTraits(method);
 
-                    var allTraits = MergeTraits(classTraits, methodTraits);
-
                     if (inlineDataAttrs.Any())
                     {
                         foreach (var inlineData in inlineDataAttrs)
@@ -116,9 +90,9 @@ namespace TestRunner.TestLoader
                             {
                                 ClassType = type,
                                 Method = method,
-                                DisplayName = GetDisplayName(allTraits, method),
-                                Priority = GetPriority(allTraits),
-                                Traits = allTraits,
+                                DisplayName = GetDisplayName(methodTraits, method, method.Name),
+                                Priority = GetPriority(methodTraits),
+                                Traits = methodTraits,
                                 Parameters = inlineData.Parameters,
                                 ClassSetup = classSetup,
                                 ClassCleanup = classCleanup,
@@ -128,17 +102,17 @@ namespace TestRunner.TestLoader
                                     (method.ReturnType.IsGenericType && method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)))
                             });
                         }
-                    }                    
+                    }
                 }
             }
 
             return tests;
         }
 
-        public List<TestInfo> LoadTests(string assemblyPath)
+        public List<ClassInfo> LoadTests(string assemblyPath)
         {
             var assembly = Assembly.LoadFrom(assemblyPath);
-            List<TestInfo> tests = new List<TestInfo>();
+            List<ClassInfo> testClasses = new List<ClassInfo>();
 
             foreach (var type in assembly.GetTypes())
             {
@@ -146,10 +120,6 @@ namespace TestRunner.TestLoader
                 if (testClassAttr != null)
                 {
                     var classTraits = GetTraits(type);
-                    if (classTraits.TryGetValue("DisplayName", out var classDisplayName))
-                    {
-                        Console.WriteLine($"Класс: {classDisplayName}");
-                    }
 
                     var classSetup = type.GetMethods()
                         .FirstOrDefault(m => m.GetCustomAttribute<TestClassSetupAttribute>() != null);
@@ -161,12 +131,24 @@ namespace TestRunner.TestLoader
                     var methodCleanup = type.GetMethods()
                         .FirstOrDefault(m => m.GetCustomAttribute<TestCleanupAttribute>() != null);
 
-                    tests.AddRange(SearchFact(type, classSetup, classCleanup, methodSetup, methodCleanup, classTraits));
-                    tests.AddRange(SearchTheory(type, classSetup, classCleanup, methodSetup, methodCleanup, classTraits));
+                    var classTests = new List<TestInfo>();
+                    classTests.AddRange(SearchFact(type, classSetup, classCleanup, methodSetup, methodCleanup));
+                    classTests.AddRange(SearchTheory(type, classSetup, classCleanup, methodSetup, methodCleanup));
+
+                    var testClassInfo = new ClassInfo
+                    {
+                        ClassType = type,
+                        DisplayName = GetDisplayName(classTraits, type, type.Name),
+                        Priority = GetPriority(classTraits),
+                        Traits = classTraits,
+                        Tests = classTests
+                    };
+
+                    testClasses.Add(testClassInfo);
                 }
             }
 
-            return tests;
+            return testClasses;
         }
     }
 }

@@ -4,7 +4,7 @@ namespace TestUnit.Asserts
 {
     public static class TestAssert
     {
-        public static void Equal(object actual, object expected)
+        public static void Equal(object? actual, object? expected)
         {
             if (expected == null && actual == null)
                 return;
@@ -16,7 +16,7 @@ namespace TestUnit.Asserts
                 throw new NotEqualException(actual, expected);
         }
 
-        public static void NotEqual(object actual, object expected) 
+        public static void NotEqual(object? actual, object? expected) 
         {
             if (expected == null && actual == null)
                 throw new EqualException(actual, expected);
@@ -28,12 +28,12 @@ namespace TestUnit.Asserts
                 throw new EqualException(actual, expected);
         }
 
-        public static void Null(object obj)
+        public static void Null(object? obj)
         {
             if (obj != null) throw new NotNullException(obj);
         }
 
-        public static void NotNull(object obj)
+        public static void NotNull(object? obj)
         {
             if (obj == null) throw new NullException(nameof(obj));
         }
@@ -49,7 +49,7 @@ namespace TestUnit.Asserts
             if (condition)
                 throw new FalseException();
         }
-        public static void SequenceEqual<T>(IEnumerable<T> actual, IEnumerable<T> expected)
+        public static void SequenceEqual<T>(IEnumerable<T>? actual, IEnumerable<T>? expected)
         {
             if (expected == null && actual == null)
                 return;
@@ -61,7 +61,7 @@ namespace TestUnit.Asserts
                 throw new SequenceEqualException("Sequences are not equal");
         }
 
-        public static void IsType<TExpected>(object obj)
+        public static void IsType<TExpected>(object? obj)
         {
             if (obj == null)
                 throw new TypeException(typeof(TExpected), null, true);
@@ -70,7 +70,7 @@ namespace TestUnit.Asserts
                 throw new TypeException(typeof(TExpected), obj.GetType(), true);
         }
 
-        public static void IsNotType<TExpected>(object obj)
+        public static void IsNotType<TExpected>(object? obj)
         {
             if (obj == null)
                 return;

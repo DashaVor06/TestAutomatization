@@ -7,9 +7,9 @@ namespace Infrastructure.RepositoriesImplementation
     {
         protected readonly Dictionary<int, TEntity> _entities = new();
 
-        public List<TEntity> GetAll()
+        public Task<List<TEntity>> GetAllAsync()
         {
-            return _entities.Values.ToList();
+            return Task.FromResult(_entities.Values.ToList());
         }
         public TEntity GetById(int id)
         {

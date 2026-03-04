@@ -16,13 +16,13 @@ namespace TestUnit.Exeptions
             : base(message)
         { }
 
-        public FalseException(bool actual, string expression = null)
+        public FalseException(bool actual, string? expression = null)
             : base(FormatMessage(actual, expression))
         {
             Actual = actual;
         }
 
-        private static string FormatMessage(bool actual, string expression)
+        private static string FormatMessage(bool actual, string? expression)
         {
             if (!string.IsNullOrEmpty(expression))
                 return $"Expected '{expression}' to be false, but was true";

@@ -20,9 +20,10 @@ namespace BusinessLogic.Services
             _mapper = mapper;
         }
 
-        public List<TEntityResponse> GetAll()
+        public async Task<List<TEntityResponse>> GetAllAsync()
         {
-            return _mapper.Map<List<TEntityResponse>>(_repository.GetAll());
+            var entities = await _repository.GetAllAsync();
+            return _mapper.Map<List<TEntityResponse>>(entities);
         }
         public TEntityResponse? GetById(int id)
         {

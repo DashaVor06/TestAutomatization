@@ -20,9 +20,10 @@ namespace Presentation.Controllers
         }
 
         [HttpGet]
-        public virtual ActionResult<List<TResponse>> GetAll()
+        public virtual async Task<ActionResult<List<TResponse>>> GetAllAsync()
         {
-            return Ok(_service.GetAll());
+            var result = await _service.GetAllAsync();
+            return Ok(result);
         }
 
         [HttpGet("{id}")]

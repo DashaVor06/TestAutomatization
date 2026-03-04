@@ -8,9 +8,9 @@ namespace TestUnit.Exeptions
 {
     public class EqualException : AssertionException
     {
-        public object Expected { get; }
-        public object Actual { get; }
-        public EqualException(object actual, object expected)
+        public object? Expected { get; }
+        public object? Actual { get; }
+        public EqualException(object? actual, object? expected)
             : base($"Expected: {expected}, but was: {actual}")
         {
             Expected = expected;
