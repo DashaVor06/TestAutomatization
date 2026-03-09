@@ -1,74 +1,93 @@
-﻿using System.Reflection;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
 using TestRunner.Models;
-using TestUnit.Attributes;
 using TestUnit.Exeptions;
 
 namespace TestRunner.TestExecuter
 {
     public class TestExecuter
     {
-        private static Dictionary<Type, bool> _classSetupExecuted = new();
-
-        private void ExecuteMethod(object? instance, MethodInfo? method, object[]? parameters, bool isAsync)
+        private void ExecuteMethod(object? instance, MethodInfo method, object[]? parameters, CancellationToken cancellationToken)
         {
-            var result = method?.Invoke(instance, parameters);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            if (isAsync && result is Task task)
+            bool isAsync =
+                method.ReturnType == typeof(Task) ||
+                (method.ReturnType.IsGenericType && method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>));
+
+            if (isAsync)
             {
-                task.GetAwaiter().GetResult();
+                var task = (Task)method.Invoke(instance, parameters)!;
+                task.Wait(cancellationToken);
             }
+            else
+            {
+                try
+                {
+                    Task.Run(() => method.Invoke(instance, parameters), cancellationToken)
+                        .Wait(cancellationToken);
+                }
+                catch (AggregateException ae) when (ae.InnerException is OperationCanceledException)
+                {
+                    throw ae.InnerException!;
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
-        public TestResult ExecuteTest(TestInfo testInfo, bool needClassCleanup)
+        public TestResult ExecuteTest(TestInfo testInfo, CancellationToken cancellationToken)
         {
             var result = new TestResult
             {
                 TestName = testInfo.DisplayName,
-                Status = "PASSED"
+                Status = "PASSED",
+                Priority = testInfo.Priority
             };
 
             object? instance = null;
 
             try
             {
-                if (testInfo.ClassType == null)
-                {
-                    throw new InvalidOperationException($"ClassType is null for test {testInfo.DisplayName}");
-                }
+                cancellationToken.ThrowIfCancellationRequested();
                 instance = Activator.CreateInstance(testInfo.ClassType);
-
-                if (testInfo.ClassSetup != null)
-                {
-                    bool needClassSetup = false;
-                    lock (_classSetupExecuted)
-                    {
-                        if (!_classSetupExecuted.ContainsKey(testInfo.ClassType))
-                        {
-                            _classSetupExecuted[testInfo.ClassType] = true;
-                            needClassSetup = true;
-                        }
-                    }
-
-                    if (needClassSetup)
-                    {
-                        ExecuteMethod(instance, testInfo.ClassSetup, null, testInfo.IsAsync);
-                    }
-                }
 
                 if (testInfo.MethodSetup != null)
                 {
-                    ExecuteMethod(instance, testInfo.MethodSetup, null, testInfo.IsAsync);
+                    ExecuteMethod(instance, testInfo.MethodSetup, null, cancellationToken);
                 }
 
-                ExecuteMethod(instance, testInfo.Method, testInfo.Parameters, testInfo.IsAsync);
+                // Тест
+                ExecuteMethod(instance, testInfo.Method, testInfo.Parameters, cancellationToken);
             }
-            catch (TargetInvocationException ex)
+            catch (OperationCanceledException)
             {
-                if (ex.InnerException is AssertionException)
+                result.Status = "TIMEOUT";
+                result.ErrorMessage = "Test exceeded timeout";
+                result.ErrorType = "TimeoutException";
+            }
+            catch (AggregateException ex)
+            {
+                if (ex.InnerException is OperationCanceledException)
                 {
-                    result.Status = "FAILED";
-                    result.ErrorMessage = ex.InnerException.Message;
-                    result.ErrorType = ex.InnerException.GetType().Name;
+                    result.Status = "TIMEOUT";
+                    result.ErrorMessage = "Test exceeded timeout";
+                    result.ErrorType = "TimeoutException";
+                }
+                else if (ex.InnerException is TargetInvocationException targetEx)
+                {
+                    if (targetEx.InnerException is AssertionException)
+                    {
+                        result.Status = "FAILED";
+                        result.ErrorMessage = targetEx.InnerException.Message;
+                        result.ErrorType = targetEx.InnerException.GetType().Name;
+                    }
+                    else
+                    {
+                        result.Status = "ERROR";
+                        result.ErrorMessage = $"Test error: {targetEx.InnerException?.Message}";
+                        result.ErrorType = targetEx.InnerException?.GetType().Name ?? "Unknown";
+                    }
                 }
                 else
                 {
@@ -76,7 +95,6 @@ namespace TestRunner.TestExecuter
                     result.ErrorMessage = $"Test error: {ex.InnerException?.Message}";
                     result.ErrorType = ex.InnerException?.GetType().Name ?? "Unknown";
                 }
-
             }
             catch (Exception ex)
             {
@@ -86,14 +104,11 @@ namespace TestRunner.TestExecuter
             }
             finally
             {
+                // Method cleanup выполняется после каждого теста
                 if (instance != null && testInfo.MethodCleanup != null)
                 {
-                    ExecuteMethod(instance, testInfo.MethodCleanup, null, testInfo.IsAsync);
-                }
-
-                if (needClassCleanup && testInfo.ClassCleanup != null)
-                {
-                    ExecuteMethod(null, testInfo.ClassCleanup, null, testInfo.IsAsync);
+                    var cleanupCts = CancellationToken.None;
+                    ExecuteMethod(instance, testInfo.MethodCleanup, null, cleanupCts);
                 }
             }
 

@@ -7,29 +7,30 @@ using Presentation.Controllers;
 using TestUnit.Asserts;
 using TestUnit.Attributes;
 using TestUnit.Attributes.ClassAttributes;
-using TestUnit.Attributes.ClassAttributes.SetupCleanup;
+using TestUnit.Attributes.MethodAttributes.SetupCleanup;
 using TestUnit.Attributes.MethodAttributes.Fact;
 using TestUnit.Attributes.MethodAttributes.Theory;
 
 namespace WebApp.Tests.Controllers
 {
     [TestClass]
-    public class CreatorControllerTests
+    [TestTrait("DisplayName", "CreatorsController")]
+    [TestTrait("Priority", "P0")]
+    public class CreatorsControllerTests
     {
-        private readonly IBaseService<CreatorRequestTo, CreatorResponseTo> _fakeService;
-        private readonly CreatorsController _controller;
-        private static Dictionary<int, CreatorResponseTo> _testData = new();
+        private IBaseService<CreatorRequestTo, CreatorResponseTo> _fakeService;
+        private CreatorsController _controller;
+        private Dictionary<int, CreatorResponseTo> _testData = new();
 
-        public CreatorControllerTests()
+        public CreatorsControllerTests()
         {
             _fakeService = A.Fake<IBaseService<CreatorRequestTo, CreatorResponseTo>>();
             _controller = new CreatorsController(_fakeService);
         }
 
-        [TestClassSetup]
-        public void CreatorControllerSetup()
+        [TestSetup]
+        public void CreatorsControllerSetup()
         {
-            _testData.Clear();
             _testData.Add(1, new CreatorResponseTo
             {
                 Id = 1,
@@ -57,8 +58,8 @@ namespace WebApp.Tests.Controllers
             });
         }
 
-        [TestClassCleanup]
-        public static void CreatorControllerCleanup() 
+        [TestCleanup]
+        public void CreatorsControllerCleanup() 
         {
             _testData?.Clear();
         }
@@ -68,6 +69,7 @@ namespace WebApp.Tests.Controllers
         [TheoryInlineData(2)]
         [TestTrait("DisplayName", "Get creator by existing id")]
         [TestTrait("Priority", "P0")]
+        [TestTrait("Timeout", "1000")]
         public void CreatorController_GetById_ExistingId_ReturnsOk(int id)
         {
             //arrange
@@ -76,6 +78,7 @@ namespace WebApp.Tests.Controllers
                .Returns(expected);
 
             //act
+            Thread.Sleep(2000);
             var actionResult = _controller.GetById(id); 
             var okResult = actionResult.Result as OkObjectResult;
             var actual = okResult?.Value as CreatorResponseTo;
@@ -92,6 +95,7 @@ namespace WebApp.Tests.Controllers
         [TheoryInlineData(-1)]
         [TestTrait("DisplayName", "Get creator by not existing id")]
         [TestTrait("Priority", "P1")]
+        [TestTrait("Timeout", "2000")]
         public void CreatorController_GetById_NonExistingId_ReturnsNotFound(int id)
         {
             //arrange
@@ -99,6 +103,7 @@ namespace WebApp.Tests.Controllers
                .Returns((CreatorResponseTo)null!);
 
             //act
+            Thread.Sleep(2000);
             var actionResult = _controller.GetById(id);
 
             //assert
@@ -119,6 +124,7 @@ namespace WebApp.Tests.Controllers
         [FactMethod]
         [TestTrait("DisplayName", "Get all creators")]
         [TestTrait("Priority", "P1")]
+        [TestTrait("Timeout", "3000")]
         public async Task CreatorController_GetAll_ReturnsListOfCreatorResponseTo()
         {
             //arrange
@@ -127,6 +133,7 @@ namespace WebApp.Tests.Controllers
                 .Returns(expectedList);
 
             //act
+            await Task.Delay(2000);
             var actionResult = await _controller.GetAllAsync();
             var okResult = actionResult.Result as OkObjectResult;
             var actualList = okResult?.Value as List<CreatorResponseTo>;
@@ -150,6 +157,7 @@ namespace WebApp.Tests.Controllers
         [FactMethod]
         [TestTrait("DisplayName", "Throw exception")]
         [TestTrait("Priority", "P2")]
+        [TestTrait("Timeout", "3000")]
         public void CreatorController_GetById_ServiceThrowsException_ThrowsException()
         {
             //arrange
@@ -158,6 +166,7 @@ namespace WebApp.Tests.Controllers
                .Throws(new InvalidOperationException("Database connection failed"));
 
             //act & assert
+            Thread.Sleep(2000);
             TestAssert.Throws<InvalidOperationException>(() =>
             {
                 _controller.GetById(id);
