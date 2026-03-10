@@ -150,7 +150,7 @@ class Program
             }
         }
     }
-
+    
     private static int GetMaxDegreeOfParallelism()
     {
         bool validInput = false;
@@ -177,6 +177,7 @@ class Program
     {
         int maxParallelTests = GetMaxDegreeOfParallelism();
         using var semaphore = new SemaphoreSlim(maxParallelTests);
+        //SetMaxDegreeOfParallelism();
 
         //sort classes by priority
         IEnumerable<ClassInfo> sortedClasses = testClasses

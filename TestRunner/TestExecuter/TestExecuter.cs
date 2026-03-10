@@ -57,7 +57,6 @@ namespace TestRunner.TestExecuter
                     ExecuteMethod(instance, testInfo.MethodSetup, null, cancellationToken);
                 }
 
-                // Тест
                 ExecuteMethod(instance, testInfo.Method, testInfo.Parameters, cancellationToken);
             }
             catch (OperationCanceledException)
@@ -104,7 +103,6 @@ namespace TestRunner.TestExecuter
             }
             finally
             {
-                // Method cleanup выполняется после каждого теста
                 if (instance != null && testInfo.MethodCleanup != null)
                 {
                     var cleanupCts = CancellationToken.None;

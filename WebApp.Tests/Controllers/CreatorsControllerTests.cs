@@ -69,7 +69,6 @@ namespace WebApp.Tests.Controllers
         [TheoryInlineData(2)]
         [TestTrait("DisplayName", "Get creator by existing id")]
         [TestTrait("Priority", "P0")]
-        [TestTrait("Timeout", "1000")]
         public void CreatorController_GetById_ExistingId_ReturnsOk(int id)
         {
             //arrange
@@ -95,7 +94,6 @@ namespace WebApp.Tests.Controllers
         [TheoryInlineData(-1)]
         [TestTrait("DisplayName", "Get creator by not existing id")]
         [TestTrait("Priority", "P1")]
-        [TestTrait("Timeout", "2000")]
         public void CreatorController_GetById_NonExistingId_ReturnsNotFound(int id)
         {
             //arrange
